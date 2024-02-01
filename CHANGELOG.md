@@ -1,5 +1,214 @@
-# Changelog
-Notable changes to the framework should be documented here
+3.23.0:
+	- Added ability to disable plain http for CFEngine Enterprise Mission Portal
+	  (ENT-10411)
+	- Added ability to enable backup archives during policy update
+	  (ENT-10481)
+	- Added ability to extend without overriding filename patterns to copy during policy update
+	  (ENT-10480)
+	- Added bundle to facilitate migration of ignore_interfaces.rx from inputdir to workdir
+	  (ENT-9402)
+	- Added self upgrade support for Amazon Linux 2 (ENT-10820)
+	- Added ss to paths for linux (ENT-10413)
+	- Aligned systemd service templates with core
+	  WantedBy=cfengine3.service was removed from systemd service templates
+	  for individual components. It was un-necessary as cfengine3.service already
+	  wants the individual services.
+	  https://github.com/cfengine/core/pull/5362
+	  Ticket: (CFE-3982)
+	- Avoided deleting python symlink when sys.bindir is not /var/cfengine/bin
+	  (CFE-4146)
+	- Changed default self upgrade target version to be that of Hubs binary version
+	  (ENT-10664)
+	- Fixed OS inventory for Amazon Linux 2 (ENT-10817)
+	- Fixed apache listening on port 80 by default (ENT-10672)
+	- Fixed cfe_autorun_inventory_aws_ec2_metadata_cache file creation
+	  Ticket: (CFE-4221)
+	- Removed jq dependency and fixed lib/testing.cf tap output (CFE-4245, CFE-4246, CFE-4223)
+	- Fixed self-upgrade for Debian and Ubuntu aarch64 clients (ENT-10816)
+	- Guard against /sys/hypervisor/uuid not being readable (ENT-9931)
+	- Made Mission Portal Apache SSLProtocol configurable via augments
+	  (ENT-10412)
+	- Made allowconnects and allowallconnects configurable via Augments
+	  (ENT-10212)
+	- Made lastseenexpireafter in body common control configurable via Augments
+	  (ENT-10414)
+	- Removed considerations for old versions from bundle agent cfe_autorun_inventory_aws_ec2_metadata_cache
+	  (CFE-4222)
+	- Stopped filtering $(sys.bindir) from dynamically determined python path
+	  (CFE-4223)
+	- Fixed recommendation policy execution (ENT-10915)
+	- Fixed postgresql.conf recommendations (ENT-10916)
+	- Added rendering of custom mustache templates to $(sys.workdir)/modules (ENT-10793)
+	- Fixed support for automatically installing semanage on el9 for federated reporting (ENT-10918)
+	- Improved failure logging during federated reporting schema import (ENT-10789)
+	- Added default:cfengine_mp_fr_debug_import class for federated reporting import debugging (ENT-10896)
+	- Made $(sys.policy_hub) always be included in default:def.acl, allowconnects, and allowallconnects unless explicitly disabled
+	  (ENT-10951)
+
+3.22.0:
+	- Added inventory for policy version (ENT-9806)
+	- Added condition to runalerts service to require stamp directory
+	  (ENT-9711)
+	- Added guards against using regline() in cases where a file may not exist
+	  (ENT-9933)
+	- Added self upgrade support for Ubuntu 22.04, Debian 11, and EL9
+	  (ENT-10290)
+	- Added ssl_request_log to list of hub log files (ENT-10192)
+	- Added support for Rocky Linux in self upgrade policy (ENT-10335)
+	- Adjusted dump.sh for multiple runs in between superhub imports
+	  (ENT-10274)
+	- Aligned module build result with release artifact (ENT-10345)
+	- Fixed body perms system_owned to account for Windows (ENT-9778)
+	- Fixed SUSE package_inventory defaults (ENT-10248)
+	- Improved federated reporting dump concurrency with database
+	  (ENT-10214)
+	- Made TLS settings for components other than cf-serverd configurable via augments
+	  (ENT-10198)
+	- Made agentfacility in body agent control configurable via Augments
+	  (ENT-10209)
+	- Made allowciphers in body server control configurable via Augments
+	  (ENT-10182)
+	- Made allowtlsversion in body server control configurable via Augments
+	  (ENT-10182)
+	- Made body maxmaillines in body executor control configurable via Augments
+	  (ENT-9614)
+	- Made mailsubject, mailfilter_include, and mailfilter_exclude configurable via Augments
+	  (ENT-10210)
+	- Made package cache refresh for common_knowledge.list_update_ifelapsed configurable
+	  This change makes the number of minutes to wait between package cache updates
+	  for some package_method bodies configurable via augments.
+	  The package_method bodies affected by this include:
+	  - body package_method pip(flags)
+	  - body package_method npm(dir)
+	  - body package_method npm_g
+	  - body package_method brew(user)
+	  - body package_method apt
+	  - body package_method apt_get
+	  - body package_method apt_get_permissive
+	  - body package_method apt_get_release(release)
+	  - body package_method dpkg_version(repo)
+	  - body package_method rpm_version(repo)
+	  - body package_method yum
+	  - body package_method yum_rpm
+	  - body package_method yum_rpm_permissive
+	  - body package_method yum_rpm_enable_repo(repoid)
+	  - body package_method yum_group
+	  - body package_method rpm_filebased(path)
+	  - body package_method ips
+	  - body package_method smartos
+	  - body package_method opencsw
+	  - body package_method emerge
+	  - body package_method pacman
+	  - body package_method zypper
+	  - body package_method generic
+	  Additionally note that the package related bundles use the package_method bodies
+	  mentioned above and are similarly influenced.
+	  - bundle agent package_present(package)
+	  - bundle agent package_latest(package)
+	  - bundle agent package_specific_present(packageorfile, package_version, package_arch)
+	  - bundle agent package_specific_absent(packageorfile, package_version, package_arch)
+	  - bundle agent package_specific_latest(packageorfile, package_version, package_arch),
+	  - bundle agent package_specific(package_name, desired, package_version, package_arch)
+	  (CFE-4178)
+	- Prevented management of runagent socket users when no users are listed
+	  (ENT-9535)
+	- Removed specific old CFEngine version package module handling for windows
+	  (ENT-9948)
+	- Started inventorying currently mounted file system types and mount points
+	  (ENT-8338)
+
+3.21.0:
+	- Added inventory for Raspberry Pi and DeviceTree devices (ENT-8628)
+	- Added policy to enforce proper permissions on Mission Portal ldap directory (ENT-9693)
+	- Added check to make sure cf-execd is running after attempting self upgrade on Windows
+	- Added exception for ldap directory perms for settings.ldap.php (ENT-9697)
+	  (ENT-9573)
+	- Added date to known paths for linux (CFE-4069)
+	- Added fallback to top-level feeder dump directory (ENT-8936)
+	- Added self upgrade knowledge for Suse 12, 15 and opensuse leap 15
+	  (ENT-9209)
+	- Added self upgrade knowledge for debian 11 (ENT-9210)
+	- Added ssh in paths.cf so that policy writers can use $(paths.ssh)
+	  (CFE-4037)
+	- Added support for multiple superhubs per feeder (ENT-8936)
+	- Amazon Linux now uses --setopt-exit_on_lock=True in redhat_no_locking_knowledge
+	  (ENT-9057)
+	- Avoided error stopping apache when no pid file exists (ENT-9108)
+	- Disabled explicit setting for SSLCompression for Mission Portal Apache.
+	  OpenSSL3 does not provide compression capability, when enabled
+	  Apache will not start.
+	  (ENT-8933)
+	- Fixed deleting multiple hosts with distributed cleanup utility
+	  (ENT-8979)
+	- Fixed directory in which windows agents source packages for upgrade
+	  (ENT-9010)
+	- Fixed services_autorun_inputs working independently from services_autorun
+	  (CFE-4017)
+	- Fixed set_line_based() for case when edit_defaults.empty_before_use is true
+	  (ENT-5866)
+	- Made proc inventory configurable via Augments (CFE-4056)
+	- Make device-tree inventory quieter in containers (ENT-9063)
+	- Stopped applying locks to masterfiles-stage (ENT-9625)
+	- Stopped loading several Apache modules on Enterprise Hubs by default:
+	  mod_auth_basic, mod_authz_host, mod_authz_owner, mod_dbd,
+	  mod_authn_file, mod_authz_dbm (ENT-8607, ENT-8602, ENT-8706,
+	  ENT-8609, ENT-9072, ENT-8605)
+	- Updated filename conventions for AIX and Solaris packages (ENT-9095)
+	- Fixed detection of location for httpd.pid (ENT-9603)
+	- Added policy to manage permissions for php/runalerts-stamp (ENT-9703)
+	- Ensured manual edits to httpd.conf are reverted (ENT-9686)
+
+3.20.0:
+	- Renamed bundle agent main to bundle agent mpf_main (CFE-3947)
+	- Added prelink to paths.cf
+	- Added Enterprise Hub postgresql.conf to files monitored for diffs by default
+	  (ENT-8618)
+	- Added PostgreSQL tunables for Federated Reporting (ENT-8617)
+	- Added lib/templates to packaged assets (ENT-8533)
+	- Added policy to patch apachectl for more robust stopping on Enterprise Hubs
+	  (ENT-8823)
+	- Added policy update exclusion for directories named .no-distrib
+	  (ENT-8079)
+	- Added support for 'option' option in pkg module (CFE-3568)
+	- Added support for Amazon Linux in standalone self upgrade (ENT-8274)
+	- Added support for downloading windows packages as part of self upgrade
+	  (ENT-8283)
+	- Adjusted MPF to handle rxdirs default from true to false (CFE-951)
+	- 755 perms on hub htdocs dir are now enforced (ENT-8212)
+	- Proper owner and perms on docroot are now enforced(ENT-8280)
+	- Prevented def.dir_masterfiles/.no-distrib from being copied
+	  (ENT-8079)
+	- Cleaned up policy related to versions prior to 3.12 (CFE-3920)
+	- Removed policy deprecated by sys.os_release (CFE-3933)
+	- Updated bundle names and wording to reflect current tooling
+	  (CFE-3921)
+	- Enabled setting environment attribute in body agent control via augments
+	  (CFE-3925)
+	- Fixed inclusion of distributed cleanup python files during install
+	  (ENT-8393)
+	- Fixed inventory for OS on Rocky Linux (ENT-8292)
+	- Fixed promise status from package upgrade when architecture specified in promise
+	  (CFE-3568)
+	- Made body classes u_kept_successful_command_results inherit_from u_results
+	  (CFE-3917)
+	- Made CMDB update ignore locks (ENT-8847)
+	- Updating host-specific CMDB data files now happens asynchronously
+	  (ENT-7357)
+	- Fixed issue with apt_get package module on Ubuntu 22 (CFE-3976)
+	- Fixed parsing of options attribute and added repo alias for repository option in pkg module
+	  (CFE-3568)
+	- Fixed pkg module parsing input when values include equals (=)
+	  (CFE-3568)
+	- Warn about missing dependencies for Distributed Cleanup utility
+	  (ENT-8832)
+	- Fixed AIX watchdog default threshold for number of cf-execd processes
+	  (CFE-3915)
+	- Stopped lowercasing software inventory on Windows (ENT-8424)
+	- Fixed windows unattended self upgrade on Windows 2008 (ENT-8066)
+	- Invalid feeder dump files are now skipped during import (ENT-8229)
+	- Fixed FR clean bundle when off state (ENT-7969)
+	- Fixed psql not found while FR import (ENT-8353)
+	- Now clean_when_off FR bundle is only run when needed (ENT-8294)
 
 3.19.0:
 	- Added interpreter attribute to standalone self upgrade package_module bodies
@@ -139,8 +348,8 @@ Notable changes to the framework should be documented here
 	- Prevent setgid files from causing continual repair related to setuid file inventory
 	  (ENT-6782)
 	- Removed stale unused copy of u_kept_successful_command body. If you
-      receive an error about undefined body, alter your policy to use
-      kept_successful_command instead (CFE-3617)
+	  receive an error about undefined body, alter your policy to use
+	  kept_successful_command instead (CFE-3617)
 	- Removed unused plugins directory (CFE-3618)
 	- Renamed python symlink to cfengine-selected-python (CFE-3512)
 	- Shortened Inventory OS attribute to be more readable (ENT-6536)
@@ -153,11 +362,11 @@ Notable changes to the framework should be documented here
 	- Use VBScript to enumerate installed packages (ENT-4669)
 	- add /usr/bin/yum to paths.cf for aix (CFE-3615)
 	- service status on FreeBSD now uses onestatus (CFE-3515)
-    - Guard again enforcing root ownership for CFEngine files on Windows (ENT-4628)
+	- Guard again enforcing root ownership for CFEngine files on Windows (ENT-4628)
 
 3.17.0:
 	- Added .csv to the list of file extensions considered by default during
-          policy update (CFE-3425)
+	  policy update (CFE-3425)
 	- Added ability to extend known paths without modifying vendored policy
 	  (CFE-3426)
 	- Added apk package module support for alpinelinux (CFE-3451)
@@ -166,7 +375,7 @@ Notable changes to the framework should be documented here
 	- Added inventory for Timezone and GMT Offset (ENT-6161)
 	- Added inventory for policy servers (ENT-6212)
 	- Added maintenance policy to update health diagnostics failures table on
-          enterprise hubs (ENT-6228)
+	  enterprise hubs (ENT-6228)
 	- Added optional handle duplicates step in federated reporting import
 	  (ENT-6035)
 	- Added replace_uncommented_substrings (ENT-6117)
@@ -200,7 +409,7 @@ Notable changes to the framework should be documented here
 	  (CFE-3259)
 	- Added inventory of license owner on enterprise hubs (ENT-5337)
 	- Added paths support for opensuse (CFE-3283)
-	- Added use of services promise for FR postgresql reconfig in case of
+	- Added use of services promise for FR PostgreSQL reconfig in case of
 	  systemd (ENT-5420)
 	- Added zypper as default package manager for opensuse (CFE-3284)
 	- Admitted ::1 as a query source on Enterprise hubs (ENT-5531)
@@ -260,43 +469,43 @@ Notable changes to the framework should be documented here
 	- Fixed pkgsrc module on Solaris/NetBSD (CFE-3151)
 	- Moved zypper package module errors to the cf-agent output (CFE-3154)
 	- Added new class mpf_enable_cfengine_systemd_component_management to enable
-		component management on systemd hosts. When defined on systemd hosts policy
-		will render systemd unit files in /etc/systemd/system for managed services
-		and that all units are enabled unless explicitly disabled. When this class
-		is not defined on systemd hosts the policy will not actively mange cfengine
-		service units (no change from previous behavior) (CFE-2429)
+	  component management on systemd hosts. When defined on systemd hosts policy
+	  will render systemd unit files in /etc/systemd/system for managed services
+	  and that all units are enabled unless explicitly disabled. When this class
+	  is not defined on systemd hosts the policy will not actively mange cfengine
+	  service units (no change from previous behavior) (CFE-2429)
 	- Fixed detection of service state on FreeBSD (CFE-3167)
 	- Added known paths for true and false on linux
-		(ENT-5060)
+	  (ENT-5060)
 	- Fixed path for restorecon on redhat systems to /sbin/restorecon
 	- Added usermod to known paths for redhat systems
 	- Added policy to manage federated reporting with CFEngine Enterprise
 	- Introduced augments variable `control_hub_query_timeout` to control cf-hub query timeout.
-		 (ENT-3153)
+	  (ENT-3153)
 	- Added OOTB inventory for IPv6 addresses (sans ::1 loopback)
-		(ENT-4987)
+	  (ENT-4987)
 	- Added and transitioned to using master_software_updates shortcut in self upgrade policy
-		(ENT-4953)
+	  (ENT-4953)
 	- Added brief descriptions to bodies and bundles in cfe_internal/CFE_cfengine.cf
-		(CFE-3220)
+	  (CFE-3220)
 	- Added support for SUSE 11, 12 in standalone self upgrade (ENT-5045, ENT-5152)
 	- Changed policy triggering cleanup of __lastseenhostlogs to target only
-		3.12.x, 3.13.x and 3.14.x. From 3.15.0 on the table is absent. (ENT-5052)
+	  3.12.x, 3.13.x and 3.14.x. From 3.15.0 on the table is absent. (ENT-5052)
 	- Fixed agent disabling on systemd systems (CFE-2429, CFE-3416)
 	- Ensured directory for custom action scripts is present (ENT-5070)
 	- Excluded Enterprise federation policy parsing on incompatible versions
-		(CFE-3193)
+	  (CFE-3193)
 	- Extended watchdog for AIX (ENT-4995)
 	- Fixed cleanup of future timestamps from status table
-		(ENT-4331, ENT-4992)
+	  (ENT-4331, ENT-4992)
 	- Fixed re-spawning of cf-execd or cf-monitord after remediating duplicate concurrent processes
-		(CFE-3150)
+	  (CFE-3150)
 	- Replaced /var/cfengine with proper $(sys.*) vars (ENT-4800)
     - Fixed selection of standard_services when used from non-default namespace (ENT-5406)
 
 3.15.0b1:
 	- Added continual checking for policy_server state (CFE-3073)
-	- Added monitoring for postgresql lock acquisition times (ENT-4753)
+	- Added monitoring for PostgreSQL lock acquisition times (ENT-4753)
 	- Added support for 'awk' filters in the FR dump-import process (ENT-4839)
 	- Added support for configuring abortclasses and abortbundleclasses via
 	  augments (ENT-4823)
@@ -371,7 +580,7 @@ Notable changes to the framework should be documented here
 	- redhat_pure is no longer defined on Fedora hosts (CFE-3022)
 
 3.13.0:
-	- Add debian 9 to the self upgrade package map (ENT-4255)
+	- Add Debian 9 to the self upgrade package map (ENT-4255)
 	- Add 'system-uuid' to default dmidecode inventory (CFE-2925)
 	- Add inventory of AWS EC2 linux instances (CFE-2924)
 	- Add ubuntu 18 to package map for self upgrade (ENT-4118)
@@ -511,7 +720,7 @@ Notable changes to the framework should be documented here
 	- Add AIX OOTB oslevel inventory (ENT-3117)
 	- Disable package inventory via modules on redhat like systems with unsupported python versions
 	  (CFE-2602)
-	- Make stock policy update more resiliant (CFE-2587)
+	- Make stock policy update more resilient (CFE-2587)
 	- Configure networks allowed to initiate report collection (client initiated reporting) via augments (#910)
 	  (CFE-2624)
 	- apt_get package module: Fix bug which prevented updates
@@ -528,14 +737,14 @@ Notable changes to the framework should be documented here
 	- Add default report collection exclusion based on promise handle
 	  (ENT-3061)
 	- Fix ability to select INI region with metachars (CFE-2519)
-	- Change: Verify transfered files during policy update
+	- Change: Verify transferred files during policy update
 	- Change select_region INI_section to match end of section or end of file
 	  (CFE-2519)
-	- Add class to enable post transfer verrification during policy updates
+	- Add class to enable post transfer verification during policy updates
 	- Add: prunetree bundle to stdlib
-	  The prunetree bundle allws you to delete files and directories up to a
-	  sepcified depth older than a specified number of days
-	- Do not symlink agents to /usr/local/bin on coreos (ENT-3047)
+	  The prunetree bundle allows you to delete files and directories up to a
+	  specified depth older than a specified number of days
+	- Do not symlink agents to /usr/local/bin on CoreOS (ENT-3047)
 	- Add: Ability to set default_repository via augments
 	- Enable settig def.max_client_history_size via augments (CFE-2560)
 	- Change self upgrade now uses standalone policy (ENT-3155)
@@ -556,8 +765,8 @@ Notable changes to the framework should be documented here
 
 3.10.0:
 	- Add: Classes body tailored for use with diff
-	- Change: Session Cookies use HTTPOnly and secure attribtues (ENT-2781)
-	- Change: Verify transfered files during policy update
+	- Change: Session Cookies use HTTPOnly and secure attributes (ENT-2781)
+	- Change: Verify transferred files during policy update
 	- Add: Inventory for system product name (model) (ENT-2780)
 	- Add: Ensure appropriate permissions for SSL files (ENT-760)
 	- Fix rare bug that would sometimes prevent redis-server from launching.
@@ -572,7 +781,7 @@ Notable changes to the framework should be documented here
 	- Change: Enable agent component management policy on systemd hosts
 	  (CFE-2429)
 	- Add: Enterprise appliaction log dir to rotation
-	- Change: re-enable hub process maintainance
+	- Change: re-enable hub process maintenance
 	- Add: edit_line contains_literal_string to stdlib
 	- Fix: Services starting or stopping unnecessarily (CFE-2421)
 	- Allow specifying agent maxconnections via def.json (CFE-2461)
@@ -592,48 +801,48 @@ Notable changes to the framework should be documented here
 	  (CFE-2466)
 
 3.7.0:
- - Support for user specified overring of framework defaults without modifying
-   policy supplied by the framework itself (see example_def.json)
- - Support for def.json class augmentation in update policy
- - Run vacuum operation on postgresql every night as a part of maintenance.
- - Add measure_promise_time action body to lib (3.5, 3.6, 3.7, 3.8)
- - New negative class guard `cfengine_internal_disable_agent_email` so that
-   agent email can be easily disabled by augmenting def.json
- - Relocate def.cf to controls/VER/
- - Relocate update_def to controls/VER
- - Relocate all controls to controls/VER
- - Only load cf_hub and reports.cf on CFEngine Enterprise installs
- - Relocate acls related to report collection from bundle server access_rules
-   to controls/VER/reports.cf into bundle server report_access_rules
- - Re-organize cfe_internal splitting core from enterprise specific policies
-   and loading the appropriate inputs only when necessary
- - Moved update directory into cfe_internal as it is not generally intended to
-   be modified
- - services/autorun.cf moved to lib/VER/ as it is not generally intended to be
-   modified
- - To improve predictibility autorun bundles are activated in lexicographical
-   order
- - Relocate services/file_change.cf to cfe_internal/enterprise. This policy is
-   most useful for a good OOTB experience with CFEngine Enterprise Mission
-   Portal.
- - Relocate service_catalogue from promsies.cf to services/main.cf. It is
-   intended to be a user entry. This name change correlates with the main
-   bundle being activated by default if there is no bundlesequence specified.
- - Reduce benchmarks sample history to 1 day.
- - Update policy no longer generates a keypair if one is not found. (Redmine: #7167)
- - Relocate cfe_internal_postgresql_maintenance bundle to lib/VER/
- - Set postgresql_monitoring_maintenance only for versions 3.6.0 and 3.6.1
- - Move hub specific bundles from lib/VER/cfe_internal.cf into lib/VER/cfe_internal_hub.cf
-   and load them only if policy_server policy if set.
- - Re-organize lib/VER/stdlib.cf from lists into classic array for use with getvalues
- - inform_mode classes changed to DEBUG|DEBUG_$(this.bundle):: (Redmine: #7191)
- - Enabled limit_robot_agents in order to work around multiple cf-execd
-   processes after upgrade. (Redmine #7185)
- - Remove Diff reporting on /etc/shadow (Enterprise)
- - Update policy from promise.cf inputs. There is no reason to include the
-   update policy into promsies.cf, update.cf is the entry for the update policy
- - _not_repaired outcome from classes_generic and scoped_classes generic (Redmine: # 7022)
- - standard_services now restarts the service if it was not already running
-   when using service_policy => restart with chkconfig (Redmine #7258)
- - Fix process_result logic to match the purpose of body process_select
-   days_older_than (Redmine #3009)
+	- Support for user specified overriding of framework defaults without modifying
+	  policy supplied by the framework itself (see example_def.json)
+	- Support for def.json class augmentation in update policy
+	- Run vacuum operation on PostgreSQL every night as a part of maintenance.
+	- Add measure_promise_time action body to lib (3.5, 3.6, 3.7, 3.8)
+	- New negative class guard `cfengine_internal_disable_agent_email` so that
+	  agent email can be easily disabled by augmenting def.json
+	- Relocate def.cf to controls/VER/
+	- Relocate update_def to controls/VER
+	- Relocate all controls to controls/VER
+	- Only load cf_hub and reports.cf on CFEngine Enterprise installs
+	- Relocate acls related to report collection from bundle server access_rules
+	  to controls/VER/reports.cf into bundle server report_access_rules
+	- Re-organize cfe_internal splitting core from enterprise specific policies
+	  and loading the appropriate inputs only when necessary
+	- Moved update directory into cfe_internal as it is not generally intended to
+	  be modified
+	- services/autorun.cf moved to lib/VER/ as it is not generally intended to be
+	  modified
+	- To improve predictibility autorun bundles are activated in lexicographical
+	  order
+	- Relocate services/file_change.cf to cfe_internal/enterprise. This policy is
+	  most useful for a good OOTB experience with CFEngine Enterprise Mission
+	  Portal.
+	- Relocate service_catalogue from promises.cf to services/main.cf. It is
+	  intended to be a user entry. This name change correlates with the main
+	  bundle being activated by default if there is no bundlesequence specified.
+	- Reduce benchmarks sample history to 1 day.
+	- Update policy no longer generates a keypair if one is not found. (Redmine: #7167)
+	- Relocate cfe_internal_postgresql_maintenance bundle to lib/VER/
+	- Set postgresql_monitoring_maintenance only for versions 3.6.0 and 3.6.1
+	- Move hub specific bundles from lib/VER/cfe_internal.cf into lib/VER/cfe_internal_hub.cf
+	  and load them only if policy_server policy if set.
+	- Re-organize lib/VER/stdlib.cf from lists into classic array for use with getvalues
+	- inform_mode classes changed to DEBUG|DEBUG_$(this.bundle):: (Redmine: #7191)
+	- Enabled limit_robot_agents in order to work around multiple cf-execd
+	  processes after upgrade. (Redmine #7185)
+	- Remove Diff reporting on /etc/shadow (Enterprise)
+	- Update policy from promise.cf inputs. There is no reason to include the
+	  update policy into promises.cf, update.cf is the entry for the update policy
+	- _not_repaired outcome from classes_generic and scoped_classes generic (Redmine: # 7022)
+	- standard_services now restarts the service if it was not already running
+	  when using service_policy => restart with chkconfig (Redmine #7258)
+	- Fix process_result logic to match the purpose of body process_select
+	  days_older_than (Redmine #3009)

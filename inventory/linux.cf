@@ -4,19 +4,22 @@ bundle common inventory_linux
 # This common bundle is for Linux inventory work.
 #
 # Provides:
-#  os_release_id, and os_release_version based on parsing of /etc/os-release
 #  systemd class based on linktarget of /proc/1/cmdline
 {
   vars:
-    has_os_release::
-      "os_release_info" string => readfile("/etc/os-release", "512"),
-      comment => "Read /etc/os-release" ;
+    have_proc_device_tree::
+      "_model_path" string => "/proc/device-tree/model";
+      "proc_device_tree_model" string => readfile("$(_model_path)"),
+        if => fileexists("$(_model_path)"),
+        comment => "Read model from $(_model_path) because it's not available from DMI",
+        meta => { "inventory", "attribute_name=System version" };
 
-    os_release_has_id::
-      "os_release_id" string => canonify("$(id_array[1])");
+      "_serial_number_path" string => "/proc/device-tree/serial-number";
+      "proc_device_tree_serial_number" string => readfile("$(_serial_number_path)"),
+        if => fileexists("$(_serial_number_path)"),
+        comment => "Read serial number from $(_serial_number_path) because it's not available from DMI",
+        meta => { "inventory", "attribute_name=System serial number" };
 
-    os_release_has_version::
-      "os_release_version" string => canonify("$(version_array[1])");
 
     has_proc_1_cmdline::
       "proc_1_cmdline_split" slist => string_split(readfile("/proc/1/cmdline", "512"), " ", "2"),
@@ -59,36 +62,23 @@ bundle common inventory_linux
   classes:
 
     any::
-      "has_os_release" expression => fileexists("/etc/os-release"),
-      comment => "Check if we can get more info from /etc/os-release";
-
-      "os_release_has_id" expression => regextract('^ID="?([^"\s]+)"?$',
-                                                   $(os_release_info),
-                                                   "id_array"),
-      comment => "Extract ID= line from os-release to id_array";
-
-      "os_release_has_version" expression => regextract('^VERSION_ID="?([^"]+)"?$',
-                                                        $(os_release_info),
-                                                        "version_array"),
-      comment => "Extract VERSION_ID= line from os-release to version_array";
-
       "has_proc_1_cmdline" expression => fileexists("/proc/1/cmdline"),
       comment => "Check if we can read /proc/1/cmdline";
 
-    os_release_has_id::
-      "$(os_release_id)" expression => "any";
-
-    os_release_has_version::
-      "$(os_release_id)_$(os_release_version)" expression => "any";
+      "inventory_have_python_symlink" expression => fileexists("$(sys.bindir)/cfengine-selected-python");
 
     has_proc_1_cmdline::
       "systemd" expression => strcmp(lastnode($(proc_1_process), "/"), "systemd"),
       comment => "Check if (the link target of) /proc/1/cmdline is systemd";
 
-  reports:
-    (DEBUG|DEBUG_inventory_linux).has_os_release::
-      "DEBUG $(this.bundle)";
-      "$(const.t)OS release ID = $(os_release_id), OS release version = $(os_release_version)";
+    inventory_have_python_symlink::
+      "cfe_python_for_package_modules_supported" -> { "CFE-2602", "CFE-3512", "ENT-10248" }
+        comment => concat( "Here we see if the version of python found is",
+                           " acceptable ( 3.x or 2.4 or greater ) for package",
+                           " modules. We use this guard to prevent errors",
+                           " related to missing python modules."),
+        expression => returnszero("$(sys.bindir)/cfengine-selected-python -V 2>&1 | grep ^Python | cut -d' ' -f 2 | ( IFS=. read v1 v2 v3 ; [ $v1 -ge 3 ] || [ $v1 -eq 2 -a $v2 -ge 4 ] )",
+                                  useshell);
 }
 
 bundle monitor measure_entropy_available

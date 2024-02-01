@@ -5,6 +5,9 @@ from __future__ import print_function
 import pprint
 import sys
 
+
+if sys.version_info.major != 3:
+  raise Exception("Only use python3 to execute this script")
 TEST_COUNT = 0
 PLATFORM_ARCH_32 = False
 
@@ -101,6 +104,7 @@ body common control
                 "../../../../../cfe_internal/update/lib.cf",
                 "../../../../../cfe_internal/update/update_policy.cf",
                 "../../packages-info.cf.sub",
+                "../../meta_skip.cf.sub",
               };
     bundlesequence => { default($(this.promise_filename)) };
   debian::
@@ -112,16 +116,13 @@ body common control
 bundle agent init
 {
   meta:
-      # No package modules written for platforms besides RedHat and Debian.
-      "test_skip_needs_work" string => "!debian.!redhat";
-
-      # The package module does not support RedHat 4 or Debian 4 (Etch).
-      "test_skip_unsupported" string => "centos_4|redhat_4|debian_4|debian_etch";
-
+      # RHEL 9 may have similar issues as RHEL 8 and also issues where rpm -U --force
+      # has different behavior than previous releases: erases other architecture
+      # packages where earlier releases did not, so fails many tests.
       # RHEL 8 has broken DNF (upgrading a 32bit package also installs a 64bit
       # package)
-      "test_soft_fail" string => "rhel_8",
-        meta  => {"CFE-rhbz"};
+      "test_soft_fail" string => "rhel_8|rhel_9",
+        meta  => {"CFE-rhbz", "CFE-4096"};
 
   # For setting up the cfengine-selected-python symlink we want to
   # target $(sys.bindir) as that will be in the test WORKDIR.

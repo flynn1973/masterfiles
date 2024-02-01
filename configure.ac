@@ -191,7 +191,8 @@ done
 AC_SUBST(MASTERFILES_TESTS)
 
 MASTERFILES_INSTALL_TARGETS=
-for j in `echo $srcdir/*.cf`
+find $srcdir -maxdepth 1 -name '*.cf' > tmp
+while IFS= read -r j
 do
     # Only add those that don't have a corresponding .in file.
     # They will be added later.
@@ -199,7 +200,8 @@ do
     then
         MASTERFILES_INSTALL_TARGETS="$MASTERFILES_INSTALL_TARGETS $j"
     fi
-done
+done < tmp
+rm tmp
 for j in `echo $srcdir/*.cf.in`
 do
     # Add .in files, but without the .in suffix.
@@ -223,7 +225,7 @@ do
         MASTERFILES_INSTALL_TARGETS="$MASTERFILES_INSTALL_TARGETS `echo $j | sed -e 's/\.in$//'`"
     done
 done
-for i in templates cfe_internal modules/packages/vendored
+for i in templates cfe_internal modules/packages/vendored lib/templates
 do
     for j in `find "$srcdir/$i" -name '*.mustache' -o -name '*.sh' -o -name '*.awk' -o -name '*.sed' -o -name '*.ps1' -o -name '*.py'`
     do
@@ -240,6 +242,7 @@ dnl ######################################################################
 
 AC_CONFIG_FILES([Makefile
                 controls/update_def.cf
+                update.cf
                 promises.cf
                 standalone_self_upgrade.cf
                 tests/Makefile
