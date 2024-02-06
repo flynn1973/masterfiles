@@ -24,45 +24,8 @@ wait_for_pid () {
     return 0
 }
 
-if [ -d /var/cfengine ]; then
-    rm -rf /var/cfengine
-fi
-
-# Test assumes we start in core or masterfiles directory
-cd ../
-
-if [ ! -d core ]; then
-    echo "Cloning core (master)"
-    git clone --recursive https://github.com/cfengine/core.git
-fi
-
-if [ ! -d masterfiles ]; then
-    echo "Cloning masterfiles (master)"
-    git clone --recursive https://github.com/cfengine/masterfiles.git
-fi
-
 echo "Checking for systemctl"
 systemctl --version
-
-cd core/
-echo "Building CFEngine core"
-set +e
-git fetch --unshallow > /dev/null 2>&1
-git remote add upstream https://github.com/cfengine/core.git  \
-    && git fetch upstream 'refs/tags/*:refs/tags/*' > /dev/null 2>&1
-set -e
-
-./autogen.sh --enable-debug --with-systemd-service
-make
-
-echo "Installing CFEngine core"
-make install
-cd ../
-
-cd masterfiles/
-./autogen.sh
-echo "Installing CFEngine masterfiles"
-make install
 
 systemctl daemon-reload
 
@@ -114,7 +77,7 @@ function check_serverd_valgrind_output {
         exit 1
     fi
     set -e
-    echo "Serverd has 1 expected valgrind error in travis because of old glibc"
+    echo "Serverd has 1 expected valgrind error because of old glibc"
     echo "Because of this we use special assertions on output"
     echo "Looking for problems in $1:"
     grep -i "definitely lost" $1

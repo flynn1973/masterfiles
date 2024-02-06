@@ -138,6 +138,7 @@ bundle common paths
       "path[timedatectl]"    string => "/usr/bin/timedatectl";
 
     linux::
+      "path[date]"          string => "/usr/bin/date";
       "path[lsattr]"        string => "/usr/bin/lsattr";
       "path[lsmod]"         string => "/sbin/lsmod";
       "path[tar]"           string => "/bin/tar";
@@ -147,6 +148,8 @@ bundle common paths
       "path[getent]"        string => "/usr/bin/getent";
       "path[mailx]"         string => "/usr/bin/mailx";
       "path[prelink]"       string => "/usr/sbin/prelink";
+      "path[ssh]"           string => "/usr/bin/ssh";
+      "path[ss]"            string => "/usr/bin/ss";
 
     aix::
 

@@ -5,57 +5,43 @@ ServerSignature Off
 ServerTokens ProductOnly
 ServerName {{{vars.sys.fqhost}}}
 ServerRoot "{{{vars.sys.workdir}}}/httpd"
+{{^classes.cfe_enterprise_disable_plain_http}}
+# ENT-10411
 Listen 80
-PidFile "{{{vars.sys.workdir}}}/httpd/httpd.pid"
+{{/classes.cfe_enterprise_disable_plain_http}}
+
+PidFile "{{{vars.mission_portal_apache_from_stage.httpd_pid_file}}}"
 
 # Modules
+# Note: Not all modules that are built are loaded.
+# Find built modules in {{{vars.sys.workdir}}}/httpd/modules
 
-LoadModule authn_file_module modules/mod_authn_file.so
-LoadModule authn_dbm_module modules/mod_authn_dbm.so
-LoadModule authn_anon_module modules/mod_authn_anon.so
-LoadModule authn_dbd_module modules/mod_authn_dbd.so
-LoadModule authz_host_module modules/mod_authz_host.so
-LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
-LoadModule authz_user_module modules/mod_authz_user.so
-LoadModule authz_dbm_module modules/mod_authz_dbm.so
-LoadModule authz_owner_module modules/mod_authz_owner.so
-LoadModule auth_basic_module modules/mod_auth_basic.so
-LoadModule auth_digest_module modules/mod_auth_digest.so
-LoadModule dbd_module modules/mod_dbd.so
-LoadModule dumpio_module modules/mod_dumpio.so
-LoadModule reqtimeout_module modules/mod_reqtimeout.so
-LoadModule ext_filter_module modules/mod_ext_filter.so
-LoadModule include_module modules/mod_include.so
-LoadModule filter_module modules/mod_filter.so
-LoadModule substitute_module modules/mod_substitute.so
-LoadModule deflate_module modules/mod_deflate.so
+# Our default log format uses features provided by these modules
 LoadModule log_config_module modules/mod_log_config.so
-LoadModule log_forensic_module modules/mod_log_forensic.so
 LoadModule logio_module modules/mod_logio.so
-LoadModule env_module modules/mod_env.so
-LoadModule mime_magic_module modules/mod_mime_magic.so
-LoadModule expires_module modules/mod_expires.so
+
+# We use the Header directive which is provided by this module
 LoadModule headers_module modules/mod_headers.so
-LoadModule usertrack_module modules/mod_usertrack.so
-LoadModule unique_id_module modules/mod_unique_id.so
+
+# We use the BrowserMatch directive which is provided by this module
 LoadModule setenvif_module modules/mod_setenvif.so
-LoadModule version_module modules/mod_version.so
+
+# Associates the requested filename's extensions with the file's behavior
+# (handlers and filters) and content (mime-type, language, character set and
+# encoding)
 LoadModule mime_module modules/mod_mime.so
-LoadModule dav_module modules/mod_dav.so
-LoadModule status_module modules/mod_status.so
-LoadModule autoindex_module modules/mod_autoindex.so
-LoadModule asis_module modules/mod_asis.so
-LoadModule info_module modules/mod_info.so
-LoadModule dav_fs_module modules/mod_dav_fs.so
-LoadModule vhost_alias_module modules/mod_vhost_alias.so
-LoadModule negotiation_module modules/mod_negotiation.so
+
+# Provides for "trailing slash" redirects and serving directory index files
 LoadModule dir_module modules/mod_dir.so
-LoadModule actions_module modules/mod_actions.so
-LoadModule speling_module modules/mod_speling.so
+
+# Used for mapping in some nicer URL names
+# TODO Consider removal after 3.20 is EOL (used by transition in 3.16)
 LoadModule alias_module modules/mod_alias.so
+
+# Required for http->https redirection and handling indexes
 LoadModule rewrite_module modules/mod_rewrite.so
-LoadModule authnz_ldap_module modules/mod_authnz_ldap.so
-LoadModule ldap_module modules/mod_ldap.so
+
+# Required for secure access
 LoadModule ssl_module modules/mod_ssl.so
 
 # Required to drop privledges
@@ -165,7 +151,11 @@ LogLevel warn
 
   # TLS Compression should be disabled to avoid CRIME
   # https://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2012-4929
-  SSLCompression off
+  # SSLCompression off
+  # As part of security hardening we minimize the features provided by OpenSSL.
+  # Case in point, we build openssl 3 without support for compression. As such,
+  # we do not explicitly disable SSL Compression beginning with CFEngine
+  # Enteprprise 3.21.0 as apache is unable to then validate the configuration.
 
   # This is not explicitly enabled to allow the requesting client the first
   # choice of support ciphers
@@ -182,8 +172,8 @@ LogLevel warn
   # A more secure setting might be:
   # SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
 
-  # Some versions of SSL and TLS are known to be insecure, so we disable them by default
-  SSLProtocol all -SSLv2 -SSLv3 -TLSv1
+  # The SSL protocol versions allowed
+  SSLProtocol {{{vars.def.cfe_enterprise_mission_portal_apache_sslprotocol}}}
 
   SSLRandomSeed startup builtin
   SSLRandomSeed connect builtin
@@ -244,11 +234,11 @@ AddType    application/x-httpd-php-source php{{{vars.cfe_internal_hub_vars.php_v
   <IfModule rewrite_module>
     RewriteEngine On
 
-    {{^classes.cfe_enterprise_enable_plain_http}}
+    {{^classes.cfe_enterprise_disable_http_redirect_to_https}}
     # Force https with redirection
     RewriteCond %{HTTPS} off
     RewriteRule (.*) https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
-    {{/classes.cfe_enterprise_enable_plain_http}}
+    {{/classes.cfe_enterprise_disable_http_redirect_to_https}}
 
     {{#classes.mission_portal_index_php_redirect_enabled}}
     # redirect from `index.php/path` to `/path`

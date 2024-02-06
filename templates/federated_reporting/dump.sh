@@ -20,6 +20,7 @@ true "${CFE_FR_COMPRESSOR_EXT?undefined}"
 true "${CFE_FR_FEEDER?undefined}"
 true "${CFE_FR_TABLES?undefined}"
 true "${CFE_FR_FEEDER_USERNAME?undefined}"
+true "${CFE_FR_SUPERHUB_HOSTKEYS?undefined}"
 
 mkdir -p "$CFE_FR_DUMP_DIR"
 mkdir -p "$CFE_FR_TRANSPORT_DIR"
@@ -54,12 +55,12 @@ in_progress_file="$CFE_FR_DUMP_DIR/$CFE_FR_FEEDER_$ts.sql.$CFE_FR_COMPRESSOR_EXT
 
 log "Dumping tables: $CFE_FR_TABLES"
 {
-  "$CFE_BIN_DIR"/pg_dump --column-inserts --data-only $(printf ' -t %s' $CFE_FR_TABLES) cfdb
+  "$CFE_BIN_DIR"/pg_dump --serializable-deferrable --column-inserts --data-only $(printf ' -t %s' $CFE_FR_TABLES) cfdb
 
   # in case of 3.12 must copy m_inventory as if it was __inventory
   if [[ "$CFE_VERSION" =~ "3.12." ]]; then
     # pg_dump will not dump the contents of views so we must run the following SQL:
-    "$CFE_BIN_DIR"/psql cfdb -c "COPY (SELECT * FROM m_inventory WHERE values IS NOT NULL) TO STDOUT CSV QUOTE '''' FORCE QUOTE *" |
+    "$CFE_BIN_DIR"/psql cfdb --quiet -c "COPY (SELECT * FROM m_inventory WHERE values IS NOT NULL) TO STDOUT CSV QUOTE '''' FORCE QUOTE *" |
       sed -e 's.^.INSERT INTO __inventory (hostkey, values) VALUES (.' \
           -e 's.$.);.'
   fi
@@ -75,4 +76,14 @@ else
   log "Dumping tables: DONE"
   mv "$in_progress_file" "$CFE_FR_TRANSPORT_DIR/$CFE_FR_FEEDER.sql.$CFE_FR_COMPRESSOR_EXT"
   chown "$CFE_FR_FEEDER_USERNAME" "$CFE_FR_TRANSPORT_DIR/$CFE_FR_FEEDER.sql.$CFE_FR_COMPRESSOR_EXT"
+fi
+
+if [ -n "$CFE_FR_SUPERHUB_HOSTKEYS" ]; then
+  log "Linking for superhub(s): $CFE_FR_SUPERHUB_HOSTKEYS"
+  for superhub_hostkey in $CFE_FR_SUPERHUB_HOSTKEYS; do
+    mkdir -p "$CFE_FR_TRANSPORT_DIR/$superhub_hostkey"
+    ln -f "$CFE_FR_TRANSPORT_DIR/$CFE_FR_FEEDER.sql.$CFE_FR_COMPRESSOR_EXT" "$CFE_FR_TRANSPORT_DIR/$superhub_hostkey/"
+    chown -R "$CFE_FR_FEEDER_USERNAME" "$CFE_FR_TRANSPORT_DIR/$superhub_hostkey"
+  done
+  log "Linking for superhub(s): DONE"
 fi

@@ -239,6 +239,55 @@ manage High Availability of Enterprise Hubs is enabled.
 
 **Note:** This class is **not** defined by default.
 
+### Disable plain http for CFEngine Enterprise Mission Portal
+
+By default Mission Portal listens for HTTP requests on port 80, redirecting to HTTPS on port 443. To prevent the web server from listening on port 80 at all define `default:cfe_cfengine_enterprise_disable_plain_http`.
+
+**For example:**
+
+```json
+{
+  "classes": {
+    "default:cfe_enterprise_disable_plain_http": {
+      "class_expressions": [ "am_policy_hub|policy_server::" ]
+    }
+  }
+}
+```
+
+**Notes:**
+
+- If this class (`default:cfe_enterprise_disable_http_redirect_to_https`) is defined the class `default:cfe_enterprise_disable_plain_http` is defined is automatically defined.
+
+**History:**
+
+- Added in CFEngine 3.23.0
+
+### Disable plain http redirect to https for CFEngine Enterprise Mission Portal
+
+By default Mission Portal listens for HTTP requests on port 80, redirecting to HTTPS on port 443. To prevent redirection of requests on HTTP to HTTPS define `default:cfe_enterprise_disable_http_redirect_to_https`.
+
+**For example:**
+
+```json
+{
+  "classes": {
+    "default:cfe_enterprise_disable_http_redirect_to_https": {
+      "class_expressions": [ "(am_policy_hub|policy_server).test_server::" ]
+    }
+  }
+}
+```
+
+**Notes:**
+
+- If `default:cfe_enterprise_disable_plain_http` is defined, this class (`default:cfe_enterprise_disable_http_redirect_to_https`) is automatically defined.
+
+**History:**
+
+- Added in CFEngine 3.6.0
+- Class renamed from `cfe_cfengine_enterprise_enable_plain_http` to `cfe_enterprise_disable_http_redirect_to_https` in CFEngine 3.23.0
+
 ### Disable cf\_promises\_validated check
 
 For non policy hubs the default update policy only performs a full scan of
@@ -343,26 +392,37 @@ the appropriate platform directory. Clients will automatically download and
 install packages when the ```trigger_upgrade``` class is defined during a run of
 `update.cf`.
 
+By default self upgrade targets the binary version running on the hub. Specify a specific version by defining `default:def.cfengine_software_pkg_version`.
 
-This [augments file][Augments] will defines `trigger_upgrade` on hosts with IPv4 addresses in 192.0.2.0/24 or 203.0.113.0/24 or hosts that have a cfengine 3.10 class not for cfengine 3.10.2.
+This [augments file][Augments] will defines `trigger_upgrade` on hosts that are not policy servers that are also not running CFEngine version 3.21.3.
 
 ```json
 {
-   "classes": {
-    "trigger_upgrade": [
-      "ipv4_10_10_1",
-      "ipv4_10_10_2",
-      "cfengine_3_10_(?!2$)\\d+"
-    ]
-   }
+  "classes": {
+    "default:trigger_upgrade": {
+      "class_expressions": [
+        "!(am_policy_hub|policy_server).!cfengine_3_21_3::"
+      ],
+      "comment": "We want clients to self upgrade their binary version if they aren't running the desired version."
+    }
+  },
+  "variables": {
+    "default:def.cfengine_software_pkg_version": {
+      "value": "3.21.3",
+      "comment": "When self upgrading, this is the binary version we want to be installed."
+    }
+  }
 }
 ```
 
 **Notes:**
 
 - This policy is specific to CFEngine Enterprise.
-- The negative look ahead regular expression is useful because it automatically
-  turns off on hosts after they reach the target version.
+- If using a regular expression based on CFEngine version, use a negative look ahead to disable self upgrade when the host reaches the desired version. e.g. `cfengine_3_18_(?!2$)\\d+` matches hosts running CFEngine 3.18 but not 3.18.2 specifically.
+
+**History:**
+
+* Changed default binary version from policy version to hub binary version in 3.23.0
 
 #### Configure path that software is served from for autonomous agent upgrades
 
@@ -407,7 +467,7 @@ For example:
 
 - Introduced 3.19.0, 3.18.1
 
-### Files considered for copy during policy updates
+### Override files considered for copy during policy updates
 
 The default update policy only copies files that match regular expressions
 listed in ```def.input_name_patterns```.
@@ -432,6 +492,35 @@ bootstrap the
 embedded
 [failsafe policy](https://github.com/cfengine/core/blob/master/libpromises/failsafe.cf) is
 used and it decides which files should be copied.
+
+### Extend files considered for copy during policy updates
+
+The default update policy only copies files that match regular expressions
+listed in `default:def.input_name_patterns`. The variable
+`default:update_def.input_name_patterns` allows the definition of additional
+filename patterns without having to maintain the full set of defaults.
+
+This [augments file][Augments] additionally ensures that files ending in
+`.tpl`, `.md`, and `.org` are also copied.
+
+```json
+{
+    "variables": {
+        "default:update_def.input_name_patterns_extra": {
+          "value": [ ".*\\.tpl", ".*\\.md", ".*\\.org" ],
+          "comment": "We use classic CFEngine templates suffixed with .tpl so they should be copied along with documentation."
+        }
+    }
+}
+```
+
+**Note:** This filter does **not** apply to bootstrap operations. During
+bootstrap the embedded
+[failsafe policy](https://github.com/cfengine/core/blob/master/libpromises/failsafe.cf)
+is used and it decides which files should be copied.
+
+**History:**
+  - Introduced in CFEngine 3.23.0
 
 ### Configuring component management
 
@@ -519,6 +608,51 @@ This [augments file][Augments] is a way to specify that `cf-monitord` should be 
 The following settings are defined in `controls/def.cf` can be set from an
 [augments file][Augments].
 
+### Automatically migrate ignore_interfaces.rx to workdir
+
+`ignore_interfaces.rx` defines regular expressions matching network interfaces that CFEngine should ignore.
+
+Prior to `3.23.0` this file was expected to be found in
+`$(sys.inputdir)/ignore_interfaces.rx`. Beginning with `3.23.0` preference is
+given to `$(sys.workdir)/ignore_interfaces.rx` if it is found. A `WARNING` is
+emitted by cfengine if the file is found only in `$(sys.inputdir)`.
+
+When the class `default:mpf_auto_migrate_ignore_interfaces_rx_to_workdir` is
+defined (not defined by default) `$(sys.workdir)/ignore_interfaces.rx` is
+maintained as a copy of `$(sys.inputdir)/ignore_interfaces.rx`.
+
+```json
+{
+  "classes": {
+    "default:mpf_auto_migrate_ignore_interfaces_rx_to_workdir": {
+      "class_expressions": [ "cfengine_3_23|cfengine_3_24::" ],
+      "comment": "Automatically migrate ignore_interfaces.rx to workdir."
+    }
+  }
+}
+```
+
+Additionally, to disable reports about the presence of
+`$(sys.inputdir)/ignore_interfaces.rx` define the class
+`default:mpf_auto_migrate_ignore_interfaces_rx_to_workdir_reports_disabled`.
+When this class is not defined, `cf-agent` will emit reports indicating it's
+presence and state in relation to `$(sys.workdir)/ignore_interfaces.rx`.
+
+```json
+{
+  "classes": {
+    "default:mpf_auto_migrate_ignore_interfaces_rx_to_workdir_reports_disabled": {
+      "class_expressions": [ "cfengine_3_23|cfengine_3_24::" ],
+      "comment": "We don't want reports about legacy ignore_interfaces.rx to be emitted."
+    }
+  }
+}
+```
+
+**History:**
+
+- Introduced `default:mpf_auto_migrate_ignore_interfaces_rx_to_workdir` and `default:mpf_auto_migrate_ignore_interfaces_rx_to_workdir_reports_disabled` in 3.23.0, 3.21.4
+
 ### dmidecode inventory
 
 When dmidecode is present, some key system attributes are inventoried. The
@@ -554,6 +688,57 @@ For example:
 **History:**
 - Introduced 3.13.0, 3.12.1, 3.10.5
 
+### Configure proc inventory
+
+By default the MPF inventories `consoles`, `cpuinfo`, `modules`, `partitions`, and `version` from `/proc`.
+This can be adjusted by defining `default:cfe_autorun_inventory_proc.basefiles`.
+
+For example:
+
+```json
+{
+  "variables": {
+    "default:cfe_autorun_inventory_proc.basefiles": {
+      "value": [
+        "consoles",
+        "cpuinfo",
+        "version"
+      ],
+      "comment": "We do not need the extra variables this produces since we get the info differently",
+      "tags": [
+        "Custom override MPF default"
+      ]
+    }
+  }
+}
+```
+
+**History:**
+
+* Added 3.21.0
+
+### Configure cf-agent syslog facility
+
+To configure the syslog facility used by `cf-agent` configure `agentfacility` by
+setting `default:def.control_agent_agentfacility` via augments to one of the
+allowed values (`LOG_USER`, `LOG_DAEMON`, `LOG_LOCAL0`, `LOG_LOCAL1`,
+`LOG_LOCAL2`, `LOG_LOCAL3`, `LOG_LOCAL4`, `LOG_LOCAL5`, `LOG_LOCAL6`,
+`LOG_LOCAL7`)
+
+```json
+{
+  "variables": {
+    "default:def.control_agent_agentfacility": {
+      "value": "LOG_USER"
+    }
+  }
+}
+```
+
+**History:**
+
+* Added in 3.22.0
+
 ### mailto
 
 The address that `cf-execd` should email agent output to.
@@ -566,21 +751,165 @@ The address that output mailed from `cf-execd` should come from.
 
 The SMTP server that `cf-execd` should use to send emails.
 
-### acl
+### mailmaxlines
 
-`def.acl` is a list of of network ranges that should be allowed to connect to cf-serverd. It is also used in the default access promises to allow hosts access to policy and modules that should be distributed.
+The maximumm number of lines of output that `cf-execd` will email.
 
-Here is an example setting the acl from augments:
+**History:**
 
-```
+* Added in CFEngine 3.22.0, 3.21.1, 3.18.4
+
+**See also:** [`maxmaillines`][cf-execd#maxmaillines]
+
+### Configure subject for emails sent by cf-execd
+
+When enabled `cf-execd` emails output that differs from previous executions. The subject of the email can be configured by setting `mailsubject` in `body executor control`. This will use the value of `default:def.control_executor_mailsubject` if it is a non-empty string.
+
+```json
 {
-  "vars": {
-    "acl": [ "24.124.0.0/16", "192.168.33.0/24" ]
+  "variables": {
+    "default:def.control_executor_mailsubject": {
+        "value": "CFEngine output from $(sys.fqhost)"
+    }
   }
 }
 ```
 
+**History:**
+
+* Added in 3.22.0
+### Configure lines that should be excluded from emails sent by cf-execd
+
+When enabled `cf-execd` emails output that differs from previous executions.
+Lines matching regular expressions in `mailfilter_exclude` in `body executor
+control` are stripped before sending. The MPF will use the value of
+`default:def.control_executor_mailfilter_exclude` if it is a non-empty list.
+
+```json
+{
+  "variables": {
+    "default:def.control_executor_mailfilter_exclude": {
+        "value": [ ".*ps output line.*", ".*regline.*" ]
+    }
+  }
+}
+```
+
+**History:**
+
+* Added in 3.22.0
+
+### Configure lines that should be included from emails sent by cf-execd
+
+When enabled `cf-execd` emails output that differs from previous executions.
+Lines matching regular expressions in `mailfilter_include` in `body executor
+control` are stripped before sending. The MPF will use the value of
+`default:def.control_executor_mailfilter_include` if it is a non-empty list.
+
+```json
+{
+  "variables": {
+    "default:def.control_executor_mailfilter_include": {
+        "value": [ ".*EMAIL.*" ]
+    }
+  }
+}
+```
+
+**History:**
+
+* Added in 3.22.0
+
+### acl
+
+`def.acl` is a list of of network ranges that should be allowed to connect to `cf-serverd`. It is also used in the default access promises to allow hosts access to policy and modules that should be distributed.
+
+Here is an example setting the acl from augments:
+
+```json
+{
+  "variables": {
+    "default:def.acl": {
+      "value": [ "24.124.0.0/16", "192.168.33.0/24" ]
+    }
+  }
+}
+```
+
+**Notes:**
+
+* Unless the class `default:disable_always_accept_policy_server_acl` is defined the value of `$(sys.policy_hub)` server is automatically added to this producing `def.acl_derived` which is used by the default access promises.
+
 **See Also:** [Configure networks allowed to make collect calls (client initiated reporting)](#configure-networks-allowed-to-make-collect_calls-client-initiated-reporting)
+
+**History:**
+
+* Automatic inclusion of `$(sys.policy_hub)` added in 3.23.0
+
+### Configure hosts that may connect to cf-serverd
+
+`allowconnects` is a list of IP addresses or subnets in `body server control` which restricts hosts that are allowed to connect to `cf-serverd`. This is the first layer of access control in `cf-serverd`, a client coming from a host not covered by this list will not be able to connect to `cf-serverd` at all.
+
+In the MPF this defaults to include localhost and the value defined for `default:def.acl`.
+
+`allowconnects` can be customized by configuring `default:def.control_server_allowconnects` via Augments. Note, this will *overwrite* the default value which includes `127.0.0.1` , `::1`, and `@(def.acl)` that you may want to include.
+
+For example, this configuration allows any IPv4 client to connect to `cf-serverd`.
+
+```json
+{
+  "variables": {
+    "default:def.control_server_allowconnects": {
+      "value": [
+        "0.0.0.0/0"
+      ]
+    }
+  }
+}
+```
+
+**Notes:**
+
+* The value of `$(sys.policy_hub)` server is automatically included in the value used by `allowconnects` in `body server control` unless the class `default:disable_always_accept_policy_server_allowconnects` is defined.
+* Alternatively define `default:disable_always_accept_policy_server`  to disable this behavior for `allowconnects`, `allowallconnects` and `def.acl` concurrently.
+
+**History:**
+
+* Added in 3.22.0
+* Automatic inclusion of `$(sys.policy_hub)` added in 3.23.0
+
+### Configure hosts that may make multiple concurrent connections to cf-serverd
+
+`allowallconnects` is a list of IP addresses or subnets in `body server control` specifying hosts that are allowed to have more than one connection to `cf-serverd`.
+
+In the MPF this defaults to include localhost and the value defined for `default:def.acl`.
+
+`allowallconnects` can be customized by configuring `default:def.control_server_allowallconnects` via Augments.
+
+For example, this configuration allows any IPv4 client from the `192.168.56.0/24` subnet to have multiple concurrent connections to `cf-serverd`.
+
+
+```json
+{
+  "variables": {
+    "default:def.control_server_allowallconnects": {
+      "value": [
+        "192.168.56.0/24"
+      ]
+    }
+  }
+}
+```
+
+**Notes:**
+
+* The value of `$(sys.policy_hub)` is automatically included in the value used by `allowallconnects` in `body server control` unless the class `default:disable_always_accept_policy_server_allowallconnects` is defined.
+* Alternatively define `default:disable_always_accept_policy_server` to disable this behavior for `allowconnects`, `allowallconnects` and `def.acl` concurrently.
+
+**History:**
+
+* Added in 3.22.0
+* Automatic inclusion of `$(sys.policy_hub)` added in 3.23.0
 
 ### ignore_missing_bundles
 
@@ -621,6 +950,27 @@ This example illustrates enabling the option via augments.
 **History:**
 
 - Introduced in 3.12.0
+
+### lastseenexpireafter
+
+This option configures the number of minutes after which last-seen entries in
+`cf_lastseen.lmdb` are purged. If not specified, the MPF defaults to the binary
+default of 1 week (`10080` minutes).
+
+```json
+{
+  "variables": {
+    "default:def.control_common_ignore_missing_inputs": {
+      "value": "30240",
+      "comment": "We want to retain history of hosts in the last-seen database for 21 days"
+    }
+  }
+}
+```
+
+**History:**
+
+- Introduced in 3.23.0
 
 ### trustkeysfrom
 
@@ -778,6 +1128,111 @@ Example definition in augments file:
   }
 }
 ```
+
+### Configure the ciphers which are allowed to be used by cf-serverd
+
+When `default:def.control_server_allowciphers` is defined `cf-serverd` will use the ciphers specified instead of the binary defaults.
+
+Example definition in augments file:
+
+```json
+{
+  "variables": {
+    "default:def.control_server_allowciphers": {
+     "value": "AES256-GCM-SHA384:AES256-SHA",
+     "comment": "Restrict the ciphers that cf-serverd is allowed to use for better security"
+    }
+  }
+}
+```
+
+**Notes:**
+
+* Be careful changing this setting. A setting that is not well aligned between all clients and the server could result in clients not being able to communicate with the hub preventing further policy updates.
+
+**History:**
+
+* Added in 3.22.0
+
+### Configure the ciphers which are allowed to be used by cf-agent
+
+When `default:def.control_common_tls_ciphers` is defined `cf-agent` will use the ciphers specified instead of the binary defaults for outgoing connections.
+
+Example definition in augments file:
+
+```json
+{
+  "variables": {
+    "default:def.control_common_tls_ciphers": {
+     "value": "AES256-GCM-SHA384:AES256-SHA",
+     "comment": "Restrict the ciphers that are used for outgoing connections."
+    }
+  }
+}
+```
+
+**Notes:**
+
+* Be careful changing this setting. A setting that is not well aligned between all clients and the server could result in clients not being able to communicate with the hub preventing further policy updates.
+* This setting is instrumented in all of the default entry points (`promises.cf`, `update.cf`, `standalone_self_upgrade.cf`).
+
+**History:**
+
+* Added in 3.22.0
+
+
+### Configure the minimum TLS version which is allowed to be used by cf-serverd
+
+When `default:def.control_server_allowtlsversion` is defined `cf-serverd` will use the minimum TLS version specified instead of the binary defaults.
+
+Example definition in augments file:
+
+```json
+{
+  "variables": {
+    "default:def.control_server_allowtlsversion": {
+     "value": "1.0",
+     "comment": "We want to allow old (<3.7.0) clients to connect."
+    }
+  }
+}
+```
+
+**Notes:**
+
+* Be careful changing this setting. A setting that is not well aligned between all clients and the server could result in clients not being able to communicate with the hub preventing further policy updates.
+
+**History:**
+
+* Added in 3.22.0
+
+
+### Configure the minimum TLS version which is allowed to be used by cf-agent
+
+When `default:def.control_common_tls_min_version` is defined `cf-agent` will use the minimum TLS version specified instead of the binary defaults for outgoing connections.
+
+Example definition in augments file:
+
+```json
+{
+  "variables": {
+    "default:def.control_common_tls_min_version": {
+     "value": "1.0",
+     "comment": "We want to connect to old (<3.7.0) servers."
+    }
+  }
+}
+```
+
+**Notes:**
+
+* Be careful changing this setting. A setting that is not well aligned between all clients and the server could result in clients not being able to communicate with the hub preventing further policy updates.
+* This setting is instrumented in all of the default entry points (`promises.cf`, `update.cf`, `standalone_self_upgrade.cf`).
+
+**History:**
+
+* Added in 3.22.0
+
 
 ### Configure users allowed to initate execution via cf-runagent
 
@@ -1068,7 +1523,7 @@ While the agent itsef will reload its config upon notice of policy change this
 bundle specifically handles changes to variables used in the MPF which may come
 from external data sources which are unknown to the components themselves.
 
-Currently only `cf-serverd` and `cf-monitord` are handled. `cf-execd` is
+Currently only `cf-serverd`, `cf-monitord`, and `cf-hub` are handled. `cf-execd` is
 **NOT** automatically restarted.
 
 To enable this functionality define the class **`mpf_augments_control_enabled`**
@@ -1178,6 +1633,24 @@ Primarily for developer conveniance, this setting allows you to easily disable t
   }
 }
 ```
+
+### Configure Enterprise Mission Portal Apache SSLProtocol
+
+This directive can be used to control which versions of the SSL/TLS protocol will be accepted in new connections.
+
+```json
+{
+  "variables": {
+    "default:def.cfe_enterprise_mission_portal_apache_sslprotocol": {
+      "value": "-SSLv3 -TLSv1 -TLSv1.1 -TLSv1.2 +TLSv1.3"
+    }
+  }
+}
+```
+
+**History:**
+
+* Added in CFEngine 3.23.0, 3.21.3, 3.18.6
 
 ### Bundlesequence
 
@@ -1325,10 +1798,104 @@ For example:
 }
 ```
 
-**History**: Added in 3.10.1
+**Notes:**
+
+- This applies to `promises.cf`.
+
+
+**History:**
+
+- Introduced in CFEngine 3.10.1
+
+### Configure default repository for file backups during policy update
+
+By default the agent creates a backup of a file before it is edited in the same
+directory as the edited file. This happens during policy update but the backup
+files are culled by default as part of the default sync behavior.
+
+Defining the `default:mpf_update_control_agent_default_repository` class will
+cause these backups to be placed in `$(sys.workdir)/backups`. Customize the
+backup directory by setting `default:update_def.control_agent_default_backup`.
+
+For example:
+
+```
+{
+  "classes": {
+    "default:mpf_update_control_agent_default_repository": {
+      "class_expressions": [ "any::" ]
+    }
+  },
+  "variables": {
+    "default:update_def.control_agent_default_repository": {
+      "value": "/var/cfengine/policy-update-backups"
+    }
+  }
+}
+```
+
+**Notes:**
+
+- This applies to `update.cf`.
+
+**History:**
+
+- Introduced in CFEngine 3.23.0
+
+### Configure default package manager
+
+The MPF specifies the package module to use for managing packages and collecting software inventory based on the detected platform. Define `default:def.default_package_module` as a data structure keyed with values matching the value of `sys.flavor` for the platforms you wish to target.
+
+**Example:**
+
+```json
+{
+  "variables": {
+    "default:def.default_package_module": {
+      "value": {
+        "ubuntu_20": "snap",
+        "aix_7": "yum"
+      },
+        "comment": "This variable provides the ability to override the default package manager to use for a platform. Keys are based on the value of $(sys.flavor) for the targeted platform."
+    }
+  }
+}
+```
+
+**History:**
+
+* Added in CFEngine 3.24.0
+
+### Configure additional package managers to inventory by default
+
+The MPF inventories software for the default package module in use. Define `default:def.additional_package_inventory_modules` as a data structure keyed with values matching the value of `sys.flavor` for any additional package modules you wish to inventory by default.
+
+
+```json
+{
+  "variables": {
+    "default:def.additional_package_inventory_modules": {
+        "value": {
+            "ubuntu_20": [ "snap", "flatpak" ],
+            "aix": [ "yum" ]
+        },
+        "comment": "This variable provides the ability to extend the default package managers to inventory for a platform. Keys are based on the value of $(sys.flavor) for the targeted platform."
+      }
+  }
+}
+```
+
+**History:**
+
+* Added in CFEngine 3.24.0
 
 ### Configure periodic package inventory refresh interval
 
+Note that there are currently two implementations of packages promises, package
+modules and package methods. Each maintain their own cache of packages installed
+and updates available.
+
+#### For package modules
 CFEngine refreshes software inventory when it makes changes via packages
 promises. Additionally, by default, CFEngine refreshes it's
 internal cache of packages installed (during each agent run) and package updates that
@@ -1353,6 +1920,49 @@ especially with public repositories or you may be banned for abuse.
 
 * Added in 3.15.0, 3.12.3
 * 3.17.0 decreased `package_module_query_installed_ifelapsed` from `60` to `0`
+
+#### For package methods
+
+CFEngine refreshes it's cache of information about packages installed and
+updates available when it evaluates packages promises if the cache has not been
+updated in the number of minutes stored in `package_list_update_ifelapsed` of
+the package method in use. Many package methods in the standard library use the
+value of `default:common_knowledge.list_updates_ifelapsed` for this value which
+can be customized via Augments.
+
+```json
+{
+  "variables": {
+    "default:common_knowledge.list_update_ifelapsed": {
+      "value": "0"
+    }
+  }
+}
+```
+
+**Notes:**
+
+* Unlike *many* variables that can be customized via Augments this variable is
+  **not** in the `default:def` bundle scope. Customizing it requires CFEngine
+  3.18.0 or newer which support targeting any namespace or variable.
+
+**See also:**
+
+* [package methods][lib/packages.cf]: ```pip```,
+  ```npm```, ```npm_g```, ```brew```, ```apt```, ```apt_get```,
+  ```apt_get_permissive```, ```apt_get_release```, ```dpkg_version```,
+  ```rpm_version``` , ```yum```, ```yum_rpm```, ```yum_rpm_permissive```,
+  ```yum_rpm_enable_repo``` , ```yum_group```, ```rpm_filebased```, ```ips```,
+  ```smartos```, ```opencsw```, ```emerge```, ```pacman```, ```zypper```,
+  ```generic```
+
+* [package bundles][lib/packages.cf]: ```package_latest```,
+  ```package_specific_present```, ```package_specific_absent```,
+  ```package_specific_latest```, ```package_specific```
+
+**History:**
+
+* Added in 3.22.0
 
 ### Enable logging of Enterprise License utilization
 
@@ -1391,6 +2001,44 @@ the watchdog will not be active.
 ```
 
 **See Also:** [Watchdog documentation][cfe_internal/core/watchdog]
+
+### Environment Variables
+
+Environment variables that should be inherited by child commands can be set using `def.control_agent_environment_vars_default`. The policy defaults are overridden if this is defined. This can be useful if you want to modify the default environment variables that are set.
+
+For example:
+
+```json
+{
+  "vars": {
+    "control_agent_environment_vars_default":
+      [ "DEBIAN_FRONTEND=noninteractive",
+        "XPG_SUS_ENV=ON" ]
+  }
+}
+```
+
+The environment variables can also be extended by defining `def.control_agent_environment_vars_extra`. The extra environment variables defined here are combined with the defaults (if they exist).
+
+```json
+{
+  "vars": {
+    "control_agent_environment_vars_extra": [ "XPG_SUS_ENV=ON" ]
+  }
+}
+```
+
+**Notes:**
+
+* Simple augments as shown above apply to *all* hosts. Consider using the
+  [augments key][Augments#augments] or [host specific data][Augments#host_specific.json] if you want to set environment variables
+  differently across different sets of hosts. The value set via Augments takes
+  precedence over policy defaults, so be sure to take that into account when
+  configuring.
+
+**History:**
+
+* Introduced in 3.20.0, 3.18.2
 
 ### Modules
 
@@ -1434,6 +2082,182 @@ control lists as necessary. `cf-serverd` will only automatically reload its
 config when it notices a change in *policy*.
 
 **History**: Added in 3.11.
+
+### Federated Reporting
+#### Configure dump interval
+
+By default feeder hubs dump data every `20` minutes. To configure the interval on which feeder hubs dump data define `cfengine_enterprise_federation:config.dump_interval`.
+
+For example:
+
+```json
+{
+  "variables": {
+    "cfengine_enterprise_federation:config.dump_interval": {
+      "value": "60",
+      "comment": "Dump data on feeders every 60 minutes"
+    }
+  }
+}
+```
+
+**History:**
+
+* Added in CFEngine 3.24.0, 3.18.7, 3.21.4
+
+#### Debug import process
+
+In order to get detailed logs about import failures define the class `default:cfengine_mp_fr_debug_import` on the _superhub_.
+
+For example, to define this class via Augments:
+
+```json
+{
+  "classes": {
+    "cfengine_mp_fr_debug_import": [ "any::" ]
+  }
+}
+```
+
+**History:**
+
+* Added in CFEngine 3.23.0, 3.21.4, 3.18.7
+
+#### Enable Federated Reporting Distributed Cleanup
+
+Hosts that report to multiple feeders result in duplicate entries and other issues. Distributed cleanup helps to deal with this condition.
+
+To enable this functionality define the class `default:cfengine_mp_fr_enable_distributed_cleanup` on the _superhub_.
+
+For example, to define this class via Augments:
+
+```json
+{
+  "classes": {
+    "cfengine_mp_fr_enable_distributed_cleanup": [ "any::" ]
+  }
+}
+```
+
+**History:**
+
+* Added in CFEngine 3.19.0, 3.18.1
+
+#### Configure SSL Certificate Directory for Federated Reporting Distributed Cleanup
+
+When custom certificates are in use distributed cleanup needs to know where to find them. To configure the path where certificates are found define `default:def.DISTRIBUTED_CLEANUP_SSL_CERT_DIR`, for example:
+
+```json
+{
+  "vars": {
+    "DISTRIBUTED_CLEANUP_SSL_CERT_DIR": "/path/to/my/cert/dir"
+  }
+}
+```
+
+**History:**
+
+* Added in CFEngine 3.20.0, 3.18.2
+
+#### PostgreSQL Configuration
+
+It's not uncommon to need to configure some PostgreSQL settings differently for Federated Reporting. The settings that are exposed as tunables which can be set via augments are listed here. These do not comprise all settings that may need adjusted, only those that are most commonly adjusted.
+
+**Note:** When [setting parameters for the PostgreSQL configuration](https://www.postgresql.org/docs/current/config-setting.html)
+file various units can be used. Valid memory units are B (bytes), kB
+(kilobytes), MB (megabytes), GB (gigabytes), and TB (terabytes). The multiplier
+for memory units is 1024, not 1000. Valid time units are us (microseconds), ms
+(milliseconds), s (seconds), min (minutes), h (hours), and d (days).
+
+##### shared_buffers
+
+Shared buffers are the amount of memory the database server uses for shared memory buffers. Settings significantly higher than the minimum are usually needed for good performance.
+
+The value should be set to 15% to 25% of the machine's total RAM. For example: if your machine's RAM size is 32 GB, then the recommended value for shared_buffers is 8 GB.
+
+To adjust this set `cfengine_enterprise_federation:postgres_config.shared_buffers` via Augments.
+
+For example:
+
+```json
+{
+  "variables": {
+    "cfengine_enterprise_federation:postgres_config.shared_buffers": "2560MB"
+  }
+}
+```
+
+**History:**
+
+* Added in 3.20.0, 3.18.2
+
+##### max_locks_per_transaction
+
+The ```max_locks_per_transaction``` value indicates the number of database objects that can be locked simultaneously. When Federated Reporting is enabled, the MPF default is `4000`.
+
+```json
+{
+  "variables": {
+    "cfengine_enterprise_federation:postgres_config.max_locks_per_transaction": "4100"
+  }
+}
+```
+
+**History:**
+
+* Added in 3.20.0, 3.18.2
+
+##### log_lock_waits
+
+Controls whether a log message is produced when a session waits longer than `deadlock_timeout` to acquire a lock. This is useful in determining if lock waits are causing poor performance. When Federated Reporting is enabled, the MPF default is `on`.
+
+```json
+{
+  "variables": {
+    "cfengine_enterprise_federation:postgres_config.log_lock_waits": "off"
+  }
+}
+```
+
+**History:**
+
+* Added in 3.20.0, 3.18.2
+
+##### max_wal_size
+
+Sets the WAL size that triggers a checkpoint.
+
+Maximum size to let the WAL grow during automatic checkpoints. This is a soft limit; WAL size can exceed `max_wal_size` under special circumstances, such as heavy load, a failing `archive_command`, or a high `wal_keep_size` setting. If this value is specified without units, it is taken as megabytes. The default is 1 GB (`1024MB`). Increasing this parameter can increase the amount of time needed for crash recovery.
+
+```json
+{
+  "variables": {
+    "cfengine_enterprise_federation:postgres_config.max_wal_size": "20G"
+  }
+}
+```
+
+**History:**
+
+* Added in 3.20.0, 3.18.2
+
+##### checkpoint_timeout
+
+Sets the maximum time between automatic WAL checkpoints.
+
+Maximum time between automatic WAL checkpoints. If this value is specified without units, it is taken as seconds. The valid range is between 30 seconds and one day. The default is five minutes (`5min`). Increasing this parameter can increase the amount of time needed for crash recovery.
+
+```json
+{
+  "variables": {
+    "cfengine_enterprise_federation:postgres_config.checkpoint_timeout": "30min"
+  }
+}
+```
+
+**History:**
+
+* Added in 3.20.0, 3.18.2
 
 ## Recommendations
 
